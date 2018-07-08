@@ -1,0 +1,31 @@
+1. build nnlib according to https://source.codeaurora.org/quic/hexagon_nn/nnlib/tree/README.HOW_TO_BUILD
+or use the pre-built one in mace/third_party/nnlib/libhexagon_nn_skel.so
+
+2. prepare sdm660
+adb root
+adb remount
+adb shell setenforce 0
+
+3. push binary to sdm660
+adb push libhexagon_nn_skel.so /system/vendor/lib/rfsa/adsp/
+
+4. <optional> to enable cdsp log on logcat
+echo 0x1f > /vendor/lib/rfsa/adsp/<app_name>.farf
+
+5. build mace
+python tools/converter.py build --config mace-models/inception-v3/inception-v3-dsp.yml
+
+6. run mace
+python tools/converter.py run --config mace-models/inception-v3/inception-v3-dsp.yml
+
+7. show classfication of result
+mkdir inception_v3_predict && cd inception_v3_predict
+mkdir Result_0
+adb pull /data/local/tmp/mace_run/model_out_softmax Result_0/softmax:0.raw
+echo keyboard.bin > raw_list.txt
+
+get script show_inceptionv3_classifications.py from snpe SDK https://developer.qualcomm.com/software/qualcomm-neural-processing-sdk
+
+$ python show_inceptionv3_classifications.py -i raw_list.txt -o ./ -l imagenet_comp_graph_label_strings.txt
+Classification results
+keyboard.bin 0.547503 543 computer keyboard

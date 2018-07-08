@@ -51,7 +51,7 @@ int HexagonControlWrapper::GetVersion() {
 
 bool HexagonControlWrapper::Config() {
   LOG(INFO) << "Hexagon config";
-  if (hexagon_controller_InitHexagonWithMaxAttributes(0, 100) != 0) {
+  if (hexagon_controller_InitHexagonWithMaxAttributes(0, 50, 1) != 0) {
     return false;
   }
   return hexagon_nn_config() == 0;
@@ -76,7 +76,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
   int64_t t0 = NowMicros();
 
   // const node
-  std::thread const_thread([&]() {
+  //std::thread const_thread([&]() {
+  {
     std::vector<hexagon_nn_const_node> const_node_list;
     for (const ConstTensor &const_tensor : net_def.tensors()) {
       std::vector<int> tensor_shape(const_tensor.dims().begin(),
@@ -103,27 +104,23 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
                                     GetEnumTypeSize(const_tensor.data_type());
       }
       const_node_list.push_back(const_node);
-      // 255 is magic number: why fastrpc limits sequence length to that?
-      if (const_node_list.size() >= 250) {
-        MACE_CHECK(
-            hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
-                                              const_node_list.size()) == 0,
-            "append const node error");
-        const_node_list.clear();
-      }
-    }
-
-    if (!const_node_list.empty()) {
-      MACE_CHECK(
-          hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
-                                            const_node_list.size()) == 0,
-          "append const node error");
+	  MACE_CHECK(
+		hexagon_nn_append_const_node(nn_id_,
+				const_node.node_id,
+				const_node.tensor.batches,
+				const_node.tensor.height,
+				const_node.tensor.width,
+				const_node.tensor.depth,
+				const_node.tensor.data,
+				const_node.tensor.dataLen) == 0,
+				"cc1-append_const_node error");
     }
     const_node_list.clear();
-  });
+  };
 
   // op node
-  std::thread op_thread([&]() {
+  //std::thread op_thread([&]() {
+	{
     OpMap op_map;
     op_map.Init();
     std::vector<hexagon_nn_op_node> op_node_list;
@@ -171,28 +168,24 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
       op_node.outputsLen = outputs.size();
 
       op_node_list.push_back(op_node);
-      if (op_node_list.size() >= 125) {
-        MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
-                                               op_node_list.size()) == 0,
-                   "append node error");
-        op_node_list.clear();
-        cached_inputs.clear();
-        cached_outputs.clear();
-      }
-    }
 
-    if (!op_node_list.empty()) {
-      MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
-                                             op_node_list.size()) == 0,
-                 "append node error");
+	  MACE_CHECK(hexagon_nn_append_node(nn_id_,
+				op_node.node_id,
+				op_node.operation,
+				op_node.padding,
+				op_node.inputs,
+				op_node.inputsLen,
+				op_node.outputs,
+				op_node.outputsLen) == 0,
+				"cc1-append node error");
     }
     op_node_list.clear();
     cached_inputs.clear();
     cached_outputs.clear();
-  });
+  };
 
-  const_thread.join();
-  op_thread.join();
+  //const_thread.join();
+  //op_thread.join();
 
   // input info
   num_inputs_ = 0;

@@ -797,13 +797,13 @@ def tuning_run(abi,
         if not stdout_success(stdout):
             common.MaceLogger.error("Mace Run", "Mace run failed.")
 
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            "rm",
-            adb_cmd_file,
-            _fg=True)
+#        sh.adb(
+#           "-s",
+#            serialno,
+#            "shell",
+#            "rm",
+#            adb_cmd_file,
+#            _fg=True)
 
         print("Running finished!\n")
 

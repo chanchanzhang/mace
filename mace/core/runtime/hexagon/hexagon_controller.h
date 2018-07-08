@@ -24,7 +24,8 @@ extern "C" {
 #endif  // __cplusplus
 
 int hexagon_controller_InitHexagonWithMaxAttributes(int enable_dcvs,
-                                                    int bus_usage);
+                                                    int bus_usage,
+							int version);
 
 int hexagon_controller_DeInitHexagon();
 
